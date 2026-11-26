@@ -34,3 +34,15 @@ SplitColors.exe path/to/.env
 cmake -S . -B build
 cmake --build build --config Release
 ```
+
+## Windows 安装包
+
+`SplitColors-Setup-x64.exe` 是面向 x64 Windows 的离线安装包，包含 Release 程序、OpenCV DLL 和应用本地的 MSVC 运行库。默认安装到当前用户的本地程序目录，无需管理员权限；输入和输出目录也位于安装目录中，并有开始菜单快捷方式。Windows 10/11 标准版包含所需的通用 C 运行库；其他系统环境需要另行验证。应用本地运行库不会随系统中的 VC++ Redistributable 自动更新，更新工具链后应重新打包。
+
+重新制作安装包：安装 x64-windows 的 OpenCV 和 Inno Setup，在 x64 Visual Studio Developer PowerShell 中运行：
+
+```powershell
+.\packaging\build.ps1 -VcpkgRoot D:\vcpkg -InnoCompiler 'C:\path\to\ISCC.exe'
+```
+
+安装脚本保留已有 `.env`、输入和输出文件夹，不会在卸载时清除用户数据。安装程序尚未进行代码签名，Windows 可能提示未知发布者。

@@ -5,3 +5,5 @@ cmake-build-release-visual-studio
 sample-mask-output
 sample-refactored-output
 SplitLayers
+packaging/stage
+SplitColors-Setup-x64.exe

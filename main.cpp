@@ -3,6 +3,14 @@
 #include <iostream>
 #include <stdexcept>
 #include <opencv2/core/utils/logger.hpp>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <tlhelp32.h>
+#include <conio.h>
+#endif
 
 namespace {
 using namespace split;
@@ -24,9 +32,37 @@ std::pair<fs::path,fs::path> reserveOutput(const fs::path& output,const fs::path
     }
     throw std::runtime_error("Cannot reserve an output directory");
 }
+
+void waitIfStartedFromExplorer() {
+#ifdef _WIN32
+    DWORD mode=0;
+    if (!GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &mode)) return;
+    HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot==INVALID_HANDLE_VALUE) return;
+    PROCESSENTRY32W entry{};
+    entry.dwSize=sizeof(entry);
+    DWORD parentId=0;
+    if (Process32FirstW(snapshot,&entry)) {
+        do {
+            if (entry.th32ProcessID==GetCurrentProcessId()) { parentId=entry.th32ParentProcessID; break; }
+        } while (Process32NextW(snapshot,&entry));
+    }
+    bool fromExplorer=false;
+    if (parentId && Process32FirstW(snapshot,&entry)) {
+        do {
+            if (entry.th32ProcessID==parentId) { fromExplorer=_wcsicmp(entry.szExeFile,L"explorer.exe")==0; break; }
+        } while (Process32NextW(snapshot,&entry));
+    }
+    CloseHandle(snapshot);
+    if (fromExplorer) {
+        std::cout << "\nPress any key to close..." << std::flush;
+        _getwch();
+    }
+#endif
+}
 }
 
-int main(int argc,char* argv[]) {
+int run(int argc,char* argv[]) {
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_WARNING);
     try {
         if (argc>2) throw std::runtime_error("Usage: SplitColors [path-to-.env]");
@@ -69,4 +105,10 @@ int main(int argc,char* argv[]) {
         std::cout << "Groups: " << groups.size() << ", succeeded: " << succeeded << ", failed: " << failed << '\n';
         return failed ? 1 : 0;
     } catch (const std::exception& e) { std::cerr << "Error: " << e.what() << '\n'; return 1; }
+}
+
+int main(int argc,char* argv[]) {
+    int result=run(argc,argv);
+    waitIfStartedFromExplorer();
+    return result;
 }
